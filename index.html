@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Bunker Survival — Zombie Survival</title>
+<style>
+*{box-sizing:border-box} html,body{margin:0;background:#070908;color:#e7eadf;font-family:Arial,sans-serif;overflow:hidden}
+#game{position:fixed;inset:0;background:#070908}
+canvas{display:block;width:100%;height:100%;image-rendering:auto}
+#hud{position:fixed;left:8px;top:8px;z-index:3;width:min(275px,calc(100vw - 16px));background:rgba(7,10,8,.86);border:1px solid #536052;border-radius:9px;padding:7px;backdrop-filter:blur(3px)}
+.row{display:flex;gap:6px;align-items:center;margin:3px 0}.label{width:62px;flex:0 0 62px;font-size:10px;color:#aeb8a9}
+.bar{height:9px;flex:1;background:#252a25;border-radius:6px;overflow:hidden;border:1px solid #3b4339}.fill{height:100%;width:100%}.hp{background:#c94c45}.food{background:#c89d45}.water{background:#4d9db8}
+#stats{font-size:10px;color:#b7c0b4;margin-top:4px;line-height:1.25;overflow-wrap:anywhere}
+#msg{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:4;background:rgba(0,0,0,.75);padding:10px 14px;border-radius:8px;font-size:13px;text-align:center;max-width:90%;display:none}
+#cross{position:fixed;left:50%;top:50%;width:18px;height:18px;transform:translate(-50%,-50%);z-index:2;pointer-events:none;opacity:.7}
+#cross:before,#cross:after{content:"";position:absolute;background:#d8dfd1}.cross:before{left:8px;top:0;width:2px;height:18px}.cross:after{left:0;top:8px;width:18px;height:2px}
+#start,#over{position:fixed;inset:0;z-index:10;background:rgba(3,5,4,.93);display:flex;align-items:center;justify-content:center;text-align:center;padding:20px}
+.panel{max-width:600px;border:1px solid #596456;background:#111612;border-radius:14px;padding:25px;box-shadow:0 15px 50px #000}
+h1{margin:0 0 8px;font-size:30px}.sub{color:#aab4a8;line-height:1.5;font-size:14px}
+button{margin-top:16px;background:#334634;color:#eef4e9;border:1px solid #71816e;border-radius:8px;padding:12px 22px;font-weight:bold;font-size:15px}
+#controls{position:fixed;right:12px;bottom:12px;z-index:5;text-align:right;font-size:11px;color:#aab3a6;background:rgba(7,10,8,.72);padding:8px;border-radius:8px}
+#pauseBtn{display:none!important}#pauseOverlay,#start,#over{z-index:30} .hidden{display:none!important}
+#mobileControls{display:none;position:fixed;inset:0;z-index:6;pointer-events:none;touch-action:none}.stick{position:absolute;width:82px;height:82px;border:2px solid rgba(225,235,220,.35);border-radius:50%;background:rgba(20,28,21,.28);pointer-events:auto}.stick .knob{position:absolute;width:34px;height:34px;left:22px;top:22px;border-radius:50%;background:rgba(220,230,215,.35);border:1px solid rgba(240,245,235,.55)}#moveStick{left:16px;bottom:16px}#aimStick{right:16px;bottom:16px}#fireBtn{position:absolute;right:34px;bottom:105px;width:58px;height:58px;border-radius:50%;border:2px solid rgba(235,235,220,.55);background:rgba(150,55,45,.55);color:#fff;font-size:11px;font-weight:bold;pointer-events:auto;display:flex;align-items:center;justify-content:center;padding:0;margin:0;line-height:1;text-align:center;white-space:nowrap}@media (pointer:coarse){#controls{display:none}#pauseBtn{display:none!important}#pauseOverlay,#start,#over{z-index:30} .hidden{display:none!important}
+#mobileControls{display:block}}
+#startBtn,#continueBtn{display:block;width:min(100%,340px);margin-left:auto;margin-right:auto;text-align:center;line-height:1.2;white-space:nowrap}#continueBtn{margin-top:8px}
+kbd{background:#252c25;border:1px solid #4a5449;border-radius:4px;padding:2px 5px;color:#fff}
+.hidden{display:none!important}
+#outsideBtn,#taskBtn{position:fixed;z-index:12;left:50%;transform:translateX(-50%);bottom:105px;background:#344a34;color:#eef2e8;border:2px solid #71846c;border-radius:12px;padding:10px 18px;font-weight:bold;display:none;pointer-events:auto}#taskBtn{bottom:205px;background:#6a5a32}
+
+#inventory{position:fixed;left:14px;bottom:14px;right:auto;top:auto;z-index:9;display:flex;gap:8px;padding:8px;background:rgba(7,10,8,.82);border:1px solid #536052;border-radius:12px;backdrop-filter:blur(3px);pointer-events:auto}
+.invSlot{position:relative;width:66px;height:72px;border:1px solid #687467;background:rgba(24,30,24,.92);border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation}
+.invSlot canvas{width:52px;height:52px;image-rendering:auto}.invCount{position:absolute;right:4px;top:3px;min-width:20px;height:20px;padding:2px 5px;border-radius:10px;background:#111;color:#fff;font-weight:700;font-size:12px;text-align:center;border:1px solid #758171}.invName{position:absolute;left:0;right:0;bottom:2px;font-size:9px;color:#d6ddd1;text-align:center;text-shadow:0 1px 2px #000}
+@media (pointer:coarse){#inventory{left:8px;bottom:105px;right:auto;top:auto;gap:4px;padding:4px}.invSlot{width:46px;height:50px}.invSlot canvas{width:36px;height:36px}.invCount{min-width:16px;height:16px;font-size:10px;padding:1px 3px}.invName{font-size:7px}}
+@media (max-width:560px){#inventory{transform:scale(.82);transform-origin:bottom left}}
+
+/* Landscape orientation support for phones */
+#rotateNotice{display:none}
+@media (pointer:coarse) and (orientation:landscape){#hud{width:min(275px,42vw);padding:6px} .row{margin:2px 0} .label{font-size:10px} #stats{font-size:10px;line-height:1.2}}
+@media (pointer:coarse) and (orientation:portrait){
+  #rotateNotice{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#070908;color:#eef4e9;text-align:center;padding:28px;font-family:Arial,sans-serif}
+  #rotateNotice .rotateCard{max-width:360px;border:1px solid #536052;background:#111612;border-radius:16px;padding:24px;box-shadow:0 12px 40px #000}
+  #rotateNotice strong{display:block;font-size:22px;margin-bottom:10px}
+  #rotateNotice p{margin:0;color:#b7c0b4;line-height:1.5;font-size:14px}
+}50%{transform:rotate(90deg)}}
+
+#gameMenuToggle{display:none;position:fixed;top:10px;right:12px;z-index:45;width:42px;height:40px;border:1px solid #6c806b;border-radius:10px;background:rgba(22,32,23,.94);color:#f0f4ea;font-size:25px;line-height:1;align-items:center;justify-content:center;box-shadow:0 2px 8px #0008}
+#gameMenuPanel{position:fixed;top:58px;right:12px;z-index:46;display:flex;flex-direction:column;gap:8px;width:148px;padding:10px;background:rgba(10,15,11,.96);border:1px solid #60735d;border-radius:12px;box-shadow:0 5px 20px #0009}
+#gameMenuPanel.hidden{display:none!important}
+#gameMenuPanel button{width:100%;padding:10px 8px;border-radius:8px;border:1px solid #61765d;background:#293a29;color:#f1f4ec;font-weight:bold;font-size:14px}
+#gameMenuPanel .exitBtn{background:#572b27;border-color:#a65a50}
+@media (max-width:600px){#gameMenuToggle{top:7px;right:8px;width:38px;height:36px}#gameMenuPanel{top:49px;right:8px;width:132px}}
+#gameMenuToggle{display:none !important}
+</style>
+<style>#doorBtn{position:fixed;left:50%;bottom:125px;transform:translateX(-50%);z-index:100;display:none;padding:12px 20px;border:2px solid #cbd5c7;border-radius:12px;background:rgba(28,40,29,.97);color:#fff;font-weight:700;font-size:16px;min-width:170px;text-align:center;pointer-events:auto;touch-action:manipulation}.show{display:block!important}#commandBtn{position:fixed;left:50%;transform:translateX(-50%);bottom:235px;z-index:15;display:none;background:#69552b;border:2px solid #b69a53;color:#fff;padding:11px 16px;border-radius:10px;font-weight:bold}#commandShop{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:14px}#commandShop .shopPanel{width:min(620px,100%);max-height:90vh;overflow:auto;background:#111812;border:1px solid #71816e;border-radius:14px;padding:18px;box-shadow:0 10px 50px #000}#commandShop h2{margin:0 0 8px}#shopBalance{color:#e8c56b;margin:8px 0 12px;font-weight:bold}.shopItem{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;margin:8px 0;background:#202a20;border:1px solid #3f503e;border-radius:9px}.shopItem small{display:block;color:#aab7a8;margin-top:4px}.shopItem button{margin:0;padding:9px 12px;white-space:nowrap}.shopClose{background:#4b2927;border-color:#95605a;width:100%}@media(max-width:520px){.shopItem{align-items:flex-start;flex-direction:column}.shopItem button{width:100%}}
+</style></head>
+<body>
+<button id="gameMenuToggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-label="Открыть меню">МЕНЮ</button>
+<div id="gameMenuPanel" class="hidden" aria-label="Меню игры">
+ <button id="menuPauseBtn" type="button">Пауза</button>
+ <button id="menuBackBtn" type="button">Назад</button>
+ <button id="menuExitBtn" class="exitBtn" type="button">Выход</button>
+</div>
+
+<div id="rotateNotice"><div class="rotateCard"><strong>Поверни устройство</strong><p>Bunker Survival работает в горизонтальной ориентации. Поверни телефон боком, чтобы продолжить игру.</p></div></div>
+<div id="game"><canvas id="c"></canvas></div>
+<div id="hud">
+  <div class="row"><div class="label">Здоровье</div><div class="bar"><div id="hp" class="fill hp"></div></div></div>
+  <div class="row"><div class="label">Голод</div><div class="bar"><div id="food" class="fill food"></div></div></div>
+  <div class="row"><div class="label">Жажда</div><div class="bar"><div id="water" class="fill water"></div></div></div>
+  <div id="stats">Выживание: 00:00 • Волна: 1 • Зомби: 0 • Уничтожено: 0 • Патроны: 12</div><button id="outsideBtn">ВЫЙТИ НА УЛИЦУ</button><button id="taskBtn">ВЫПОЛНИТЬ ЗАДАНИЕ</button>
+</div>
+
+<div id="inventory" aria-label="Инвентарь">
+ <div class="invSlot" data-item="water" title="Вода"><canvas id="invWater" width="64" height="64"></canvas><span class="invCount" id="invWaterCount">0</span><span class="invName">ВОДА</span></div>
+ <div class="invSlot" data-item="food" title="Еда"><canvas id="invFood" width="64" height="64"></canvas><span class="invCount" id="invFoodCount">0</span><span class="invName">ЕДА</span></div>
+ <div class="invSlot" data-item="med" title="Аптечка"><canvas id="invMed" width="64" height="64"></canvas><span class="invCount" id="invMedCount">0</span><span class="invName">АПТЕЧКА</span></div>
+</div>
+<div id="cross"></div>
+<div id="msg"></div>
+<div id="controls">WASD / стрелки — движение · мышь — направление · ЛКМ — выстрел</div><div id="mobileControls"><div id="moveStick" class="stick"><div class="knob"></div></div><div id="aimStick" class="stick"><div class="knob"></div></div><button id="fireBtn" type="button">ОГОНЬ</button></div><button id="doorBtn" type="button">ВЫЙТИ НА УЛИЦУ</button>
+
+<button id="commandBtn" type="button">КОМАНДНЫЙ ЦЕНТР</button>
+<div id="commandShop" class="hidden"><div class="shopPanel"><h2>КОМАНДНЫЙ ЦЕНТР</h2><div class="sub">Покупай снаряжение и улучшай базу за шестерёнки, которые выпадают с зомби.</div><div id="shopBalance">Шестерёнки: 0</div><div id="shopItems"></div><button class="shopClose" id="shopClose">ЗАКРЫТЬ</button></div></div>
+<div id="pauseOverlay" class="hidden"><div class="panel"><h1>ПАУЗА</h1><div class="sub">Прогресс сохранён. Можно продолжить в любой момент.</div><button id="resumeBtn">ПРОДОЛЖИТЬ</button></div></div>
+
+<div id="start">
+ <div class="panel">
+  <h1>BUNKER SURVIVAL</h1>
+  <div class="sub">Ты остался внутри бункера после начала зомби-апокалипсиса. Исследуй помещения, собирай еду и воду и продержись как можно дольше.</div>
+  <div class="sub" style="margin-top:10px">Зелёная зона — припасы · синяя — вода · красная — аптечка.</div>
+  <button id="startBtn">НАЧАТЬ ВЫЖИВАНИЕ</button><button id="continueBtn" style="display:none">ПРОДОЛЖИТЬ СОХРАНЕНИЕ</button>
+ </div>
+</div>
+
+<div id="over" class="hidden">
+ <div class="panel">
+  <h1 id="overTitle">Бункер пал</h1>
+  <div id="overText" class="sub"></div>
+  <button id="restartBtn">ИГРАТЬ СНОВА</button>
+ </div>
+</div>
+
+<script>
+const canvas=document.getElementById("c"),ctx=canvas.getContext("2d");
+const bg={width:1536,height:1024};
+const streetBg={width:1536,height:1024};
+const playerImages={up:null,down:null,left:null,right:null};
+const weaponImage={complete:false,naturalWidth:0};
+const lootSheet={complete:false,naturalWidth:0};
+// x,y,w,h на исходной текстуре (1536x1024), без цифр количества.
+const LOOT_RECTS={
+  med:[345,710,195,220],
+  water:[555,705,170,245],
+  food:[740,705,230,230],
+  ammo:[975,705,230,230]
+};
+let playerFacing=-Math.PI/2;
+let walkPhase=0;
+let playerMoving=false;
+function getFacingSprite(){
+  let a=playerFacing;
+  while(a>Math.PI)a-=Math.PI*2; while(a<-Math.PI)a+=Math.PI*2;
+  if(a>=-Math.PI/4 && a<Math.PI/4)return "right";
+  if(a>=Math.PI/4 && a<3*Math.PI/4)return "down";
+  if(a>=3*Math.PI/4 || a<-3*Math.PI/4)return "left";
+  return "up";
+}
+function updatePlayerFacing(mx,my){
+  if(Math.abs(mx)+Math.abs(my)>0.01) playerFacing=Math.atan2(my,mx);
+  if(mouse.active){
+    const tx=worldX(mouse.x),ty=worldY(mouse.y);
+    const dx=tx-player.x,dy=ty-player.y;
+    if(Math.hypot(dx,dy)>4) playerFacing=Math.atan2(dy,dx);
+  }
+}
+let lastGoodPlayerSprite="down";
+function drawPlayerCharacter(){
+  const baseX=screenX(player.x),baseY=screenY(player.y);
+  const moving=playerMoving;
+  const step=Math.sin(walkPhase);
+  // Стабильная походка: только лёгкий bob, без вращения самого спрайта.
+  // Это предотвращает визуальное исчезновение корпуса на некоторых кадрах/на телефонах.
+  const bob=moving ? Math.abs(Math.sin(walkPhase))*1.2*scale : 0;
+  const sway=moving ? Math.sin(walkPhase)*0.45*scale : 0;
+  const px=baseX+sway,py=baseY-bob;
+  const dir=getFacingSprite();
+  // В исходном наборе right.png содержит только голову.
+  // Для правого направления зеркально используем полноценный left.png,
+  // чтобы тело никогда не исчезало.
+  const mirroredRight = dir === "right";
+  const sourceDir = mirroredRight ? "left" : dir;
+  let im=playerImages[sourceDir];
+  if(im && im.complete && im.naturalWidth>0 && im.naturalHeight>0){
+    lastGoodPlayerSprite=sourceDir;
+  }else{
+    im=playerImages[lastGoodPlayerSprite];
+  }
+
+  // Тень всегда рисуется под персонажем, чтобы ноги не терялись на тёмной карте.
+  ctx.save();
+  ctx.globalAlpha=.38;
+  ctx.fillStyle="#000";
+  ctx.beginPath();
+  ctx.ellipse(px,baseY+18*scale,13*scale,5*scale,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  if(im && im.complete && im.naturalWidth>0){
+    ctx.save();
+    ctx.imageSmoothingEnabled=true;
+    // Рисуем полный спрайт с правильным соотношением 60:80 и
+    // привязываем его нижний край к ногам персонажа. Так ноги не
+    // обрезаются и не исчезают при повороте/зеркалировании.
+    const sw=54*scale, sh=72*scale;
+    const drawY=baseY-sh+2*scale;
+    if(mirroredRight){
+      // Зеркалим полноценный левый спрайт целиком.
+      ctx.translate(px+sw/2,drawY);
+      ctx.scale(-1,1);
+      ctx.drawImage(im,0,0,sw,sh);
+    }else{
+      ctx.drawImage(im,px-sw/2,drawY,sw,sh);
+    }
+    ctx.restore();
+  }else{
+    ctx.beginPath();ctx.arc(px,py,player.r*scale,0,Math.PI*2);
+    ctx.fillStyle="#d5d9c9";ctx.fill();ctx.strokeStyle="#243225";ctx.lineWidth=3;ctx.stroke();
+  }
+
+  // Оружие рисуем поверх корпуса, но не поверх головы.
+  if(player.weapon!=="Нож" && weaponImage.complete && weaponImage.naturalWidth>0){
+    const a=playerFacing;
+    const wx=px+Math.cos(a)*15*scale, wy=py+Math.sin(a)*15*scale;
+    ctx.save();
+    ctx.translate(wx,wy);
+    ctx.rotate(a);
+    ctx.globalAlpha=.98;
+    ctx.drawImage(weaponImage,-24*scale,-5.5*scale,48*scale,11*scale);
+    ctx.restore();
+  }
+}
+
+let W,H,scale=1,ox=0,oy=0,running=false,last=0,elapsed=0;
+const keys={}; let mouse={x:0,y:0,down:false,active:false};
+let touch={active:false,x:0,y:0,startX:0,startY:0}; let aimTouch={active:false,x:0,y:0,startX:0,startY:0};
+let player,zombies=[],loot=[],bullets=[],particles=[],spawnTimer=0,shotTimer=0;
+let messageTimer=0,currentRoom=null;let outside=false;let taskIndex=0;let taskProgress=0;let taskCooldown=0;
+let inventory={water:0,food:0,med:0};
+
+function resize(){W=canvas.width=innerWidth*devicePixelRatio;H=canvas.height=innerHeight*devicePixelRatio;canvas.style.width=innerWidth+"px";canvas.style.height=innerHeight+"px";fit()}
+function fit(){if(!bg.width)return;const s=Math.min(W/bg.width,H/bg.height);scale=s;ox=(W-bg.width*s)/2;oy=(H-bg.height*s)/2}
+addEventListener("resize",resize);resize();
+function worldX(sx){return(sx-ox)/scale} function worldY(sy){return(sy-oy)/scale}
+function screenX(x){return ox+x*scale} function screenY(y){return oy+y*scale}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+
+function reset(){
+ player={x:750,y:650,r:14,hp:100,food:100,water:100,ammo:0,kills:0,stamina:100,gears:0,weapon:"Нож",armor:0,baseLevel:0};
+ inventory={water:0,food:0,med:0};
+ zombies=[];loot=[];bullets=[];particles=[];elapsed=0;wave=1;nextWaveAt=60;spawnTimer=999999;shotTimer=0;paused=false;outside=false;taskIndex=0;taskProgress=0;taskCooldown=0;
+ loot.push({x:150,y:520,type:"food",label:"Пайок"});
+ loot.push({x:1350,y:520,type:"food",label:"Продукты"});
+ loot.push({x:1315,y:735,type:"water",label:"Чистая вода"});
+ loot.push({x:1190,y:360,type:"med",label:"Аптечка"});
+ loot.push({x:300,y:735,type:"ammo",label:"Патроны"});
+ loot.push({x:750,y:180,type:"ammo",label:"Патроны"});
+ loot.push({x:1350,y:180,type:"ammo",label:"Ящик боеприпасов"});
+}
+
+/*
+ * КОЛЛИЗИЯ ДЛЯ НОВОЙ КАРТЫ БУНКЕРА
+ * Координаты соответствуют изображению 1536x1024.
+ * Сначала задаём только настоящий пол, затем отдельными маленькими
+ * прямоугольниками соединяем комнаты через видимые дверные проёмы.
+ * Поэтому стены между помещениями сами по себе непроходимы.
+ */
+const WALK=[
+  // Левые помещения.
+  {x:82,y:92,w:300,h:175,n:"Спальня"},
+  {x:82,y:292,w:300,h:125,n:"Санузел"},
+  {x:82,y:438,w:310,h:170,n:"Мастерская"},
+  {x:90,y:625,w:385,h:190,n:"Генераторная"},
+
+  // Верхний центральный блок.
+  {x:408,y:48,w:164,h:225,n:"Лестничный блок"},
+  {x:582,y:48,w:374,h:225,n:"Командный центр"},
+
+  // Правые помещения.
+  {x:1078,y:90,w:348,h:190,n:"Склад"},
+  {x:1078,y:295,w:348,h:145,n:"Медпункт"},
+  {x:1078,y:445,w:348,h:170,n:"Столовая"},
+  {x:968,y:625,w:425,h:190,n:"Гидропоника"},
+
+  // Центральные коридоры, разбитые вокруг кабинета.
+  {x:420,y:292,w:645,h:105,n:"Верхний коридор"},
+  {x:420,y:395,w:135,h:205,n:"Левый центральный проход"},
+  {x:840,y:395,w:225,h:205,n:"Правый центральный проход"},
+  {x:420,y:600,w:645,h:88,n:"Нижний коридор"},
+
+  // Кабинет в центре.
+  {x:585,y:410,w:235,h:185,n:"Кабинет"},
+
+  // Подход к гермодвери.
+  {x:625,y:650,w:270,h:115,n:"Шлюзовой коридор"}
+];
+
+const DOOR_LINKS=[
+  // Левые двери.
+  {x:382,y:235,w:45,h:42},   // спальня -> левый проход
+  {x:382,y:355,w:45,h:42},   // санузел -> левый проход
+  {x:390,y:495,w:45,h:48},   // мастерская -> левый проход
+  {x:455,y:600,w:48,h:45},   // генераторная -> нижний коридор
+
+  // Верхний центральный блок.
+  {x:470,y:265,w:48,h:55},   // лестничный блок -> верхний коридор
+  {x:650,y:265,w:48,h:55},   // командный центр -> верхний коридор
+
+  // Правые двери.
+  {x:1045,y:175,w:50,h:55},  // склад -> правый проход
+  {x:1045,y:345,w:50,h:55},  // медпункт -> правый проход
+  {x:1045,y:500,w:50,h:55},  // столовая -> правый проход
+  {x:965,y:595,w:50,h:55},   // гидропоника -> нижний коридор
+
+  // Кабинет: двери слева, справа и снизу.
+  {x:535,y:485,w:55,h:50},   // левый проход -> кабинет
+  {x:815,y:485,w:55,h:50},   // кабинет -> правый проход
+  {x:685,y:580,w:55,h:55},   // кабинет -> нижний коридор
+
+  // Герметичная дверь — широкий проход без невидимой коллизии, чтобы зомби не застревали.
+  {x:700,y:620,w:105,h:85}    // нижний коридор <-> шлюз
+];
+
+function pointInRect(x,y,r){
+  return x>=r.x && x<=r.x+r.w && y>=r.y && y<=r.y+r.h;
+}
+
+function pointWalkable(x,y){
+  for(const r of WALK) if(pointInRect(x,y,r)) return true;
+  for(const r of DOOR_LINKS) if(pointInRect(x,y,r)) return true;
+  return false;
+}
+
+function circleWalkable(x,y,rad){
+  /*
+   * Проверяем не только центр игрока, но и 24 точки вокруг него.
+   * Это не позволяет "протиснуться" боком или по диагонали через стену.
+   */
+  const rr=rad+2;
+  if(!pointWalkable(x,y)) return false;
+  for(let i=0;i<24;i++){
+    const a=i*Math.PI/12;
+    if(!pointWalkable(x+Math.cos(a)*rr,y+Math.sin(a)*rr)) return false;
+  }
+  return true;
+}
+
+function movePlayer(nx,ny){
+  const dx=nx-player.x,dy=ny-player.y;
+  const steps=Math.max(1,Math.ceil(Math.hypot(dx,dy)/3));
+  for(let i=0;i<steps;i++){
+    const tx=player.x+dx/steps;
+    const ty=player.y+dy/steps;
+
+    // Сначала пробуем полное движение.
+    if(circleWalkable(tx,ty,player.r)){
+      player.x=tx; player.y=ty;
+      continue;
+    }
+
+    // Если упёрлись в стену — разрешаем только свободную ось.
+    if(circleWalkable(tx,player.y,player.r)) player.x=tx;
+    if(circleWalkable(player.x,ty,player.r)) player.y=ty;
+  }
+}
+
+const ROOM_INFO=[
+ {name:"СПАЛЬНЯ",x:85,y:95,w:300,h:175,desc:"Восстанавливает силы.",color:"#7c9a68"},
+ {name:"САНУЗЕЛ",x:85,y:295,w:315,h:115,desc:"Восстанавливает жажду.",color:"#4e91a3"},
+ {name:"МАСТЕРСКАЯ",x:85,y:440,w:315,h:170,desc:"Постепенно пополняет патроны.",color:"#ad9154"},
+ {name:"ГЕНЕРАТОРНАЯ",x:95,y:635,w:385,h:175,desc:"Поддерживает энергосистемы бункера.",color:"#8b6d49"},
+ {name:"КОМАНДНЫЙ ЦЕНТР",x:590,y:60,w:350,h:210,desc:"Следит за обстановкой.",color:"#6d8d62"},
+ {name:"СКЛАД",x:1080,y:95,w:340,h:185,desc:"Запас еды и боеприпасов.",color:"#9a8952"},
+ {name:"МЕДПУНКТ",x:1080,y:305,w:340,h:130,desc:"Медленно лечит.",color:"#a85d59"},
+ {name:"СТОЛОВАЯ",x:1080,y:455,w:340,h:150,desc:"Восстанавливает голод.",color:"#8c7b55"},
+ {name:"ГИДРОПОНИКА",x:990,y:635,w:390,h:175,desc:"Производит еду и воду.",color:"#5d9360"},
+ {name:"КАБИНЕТ",x:595,y:425,w:215,h:180,desc:"Безопасная зона.",color:"#71806c"},
+ {name:"ШЛЮЗ",x:635,y:700,w:220,h:130,desc:"Гермодверь — выход закрыт.",color:"#9a5a4e"}
+];
+function pointInRect(x,y,r){return x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h}
+const OUTDOOR_TASKS=[
+ {name:"ПРОВЕРКА ПЕРИМЕТРА",x:350,y:300,time:3,reward:"+2 патрона"},
+ {name:"РЕМОНТ ГЕНЕРАТОРА",x:800,y:250,time:5,reward:"+25 энергии"},
+ {name:"СБОР ПРОДОВОЛЬСТВИЯ",x:1150,y:520,time:4,reward:"+25 еды"},
+ {name:"ПОИСК ВОДЫ",x:500,y:650,time:4,reward:"+30 воды"}
+];
+function outsideWalkable(x,y){
+  const sw=streetBg.naturalWidth||1536, sh=streetBg.naturalHeight||1024;
+  return x>18&&x<sw-18&&y>18&&y<sh-18;
+}
+function moveOutside(nx,ny){
+ const dx=nx-player.x,dy=ny-player.y;
+ const steps=Math.max(1,Math.ceil(Math.hypot(dx,dy)/5));
+ for(let i=0;i<steps;i++){
+  const tx=player.x+dx/steps,ty=player.y+dy/steps;
+  if(outsideWalkable(tx,player.y))player.x=tx;
+  if(outsideWalkable(player.x,ty))player.y=ty;
+ }
+}
+// Точки перехода между картами. На уличной карте ворота находятся сверху,
+// поэтому после выхода игрок появляется прямо у них, а не внизу карты.
+const BUNKER_EXIT={x:745,y:735,r:105};
+const OUTSIDE_GATE={x:768,y:145,r:95};
+function nearExit(){return !outside && Math.hypot(player.x-BUNKER_EXIT.x,player.y-BUNKER_EXIT.y)<BUNKER_EXIT.r}
+function nearOutsideGate(){return outside && Math.hypot(player.x-OUTSIDE_GATE.x,player.y-OUTSIDE_GATE.y)<OUTSIDE_GATE.r}
+function currentTask(){return OUTDOOR_TASKS[taskIndex%OUTDOOR_TASKS.length]}
+function enterOutside(){
+ if(outside)return;
+ if(!nearExit()){showMsg("Подойди к воротам гермошлюза.");return}
+ if(elapsed>=nextWaveAt||zombies.length>0){showMsg("Сейчас выход закрыт: идёт волна зомби.");return}
+ hermeticDoorOpen=true;
+ outside=true;
+ player.x=OUTSIDE_GATE.x;
+ player.y=OUTSIDE_GATE.y;
+ taskProgress=0;
+ taskCooldown=0;
+ showMsg("Ты вышел из бункера. Ворота находятся сверху карты.");
+ updateOutdoorUI();
+ saveGame();
+}
+function enterBunker(){
+ outside=false;
+ player.x=BUNKER_EXIT.x;
+ player.y=BUNKER_EXIT.y;
+ taskProgress=0;
+ showMsg("Ты вернулся в бункер.");
+ updateOutdoorUI();
+ saveGame();
+}
+function doTask(dt){
+ const t=currentTask();const d=Math.hypot(player.x-t.x,player.y-t.y);
+ if(d<65){taskProgress+=dt;if(taskProgress>=t.time){
+   if(taskIndex%4===0)player.ammo=Math.min(30,player.ammo+2);
+   if(taskIndex%4===1)player.hp=clamp(player.hp+25,0,100);
+   if(taskIndex%4===2)player.food=clamp(player.food+25,0,100);
+   if(taskIndex%4===3)player.water=clamp(player.water+30,0,100);
+   showMsg("Задание выполнено: "+t.name+" ("+t.reward+")");taskIndex++;taskProgress=0;taskCooldown=2;saveGame();
+ }}else taskProgress=0;
+}
+function updateOutdoorUI(){
+  const ob=document.getElementById('outsideBtn'),tb=document.getElementById('taskBtn'),db=document.getElementById('doorBtn');
+  // Одна рабочая кнопка используется и для выхода, и для возвращения в бункер.
+  ob.style.display='none';
+  tb.style.display=outside?'block':'none';
+  const canUseDoor=outside?nearOutsideGate():(nearExit()&&elapsed<nextWaveAt&&zombies.length===0);
+  db.classList.toggle('show',canUseDoor);
+  db.textContent=outside?'В БУНКЕР':'ВЫЙТИ НА УЛИЦУ';
+  if(outside){const t=currentTask();tb.textContent='ЗАДАНИЕ: '+t.name;}
+}
+function pointWalkable(x,y){
+  const zones = [
+    {x:105,y:105,w:280,h:175},   // спальня
+    {x:105,y:295,w:285,h:120},   // санузел
+    {x:105,y:440,w:300,h:175},   // мастерская
+    {x:95,y:625,w:385,h:190},    // генераторная
+    {x:420,y:105,w:145,h:175},   // лестничный блок
+    {x:585,y:105,w:365,h:175},   // командный центр
+    {x:1085,y:105,w:345,h:185},  // склад
+    {x:1085,y:300,w:345,h:140},  // медпункт
+    {x:1085,y:450,w:345,h:165},  // столовая
+    {x:970,y:625,w:420,h:190},   // гидропоника
+    {x:590,y:425,w:225,h:185},   // кабинет
+
+    // Вертикальные коридоры слева и справа.
+    {x:410,y:285,w:55,h:335},
+    {x:1025,y:285,w:55,h:335},
+
+    // Центральный коридор.
+    {x:455,y:305,w:570,h:365},
+
+    // Нижний коридор и подход к гермодвери.
+    {x:470,y:600,w:500,h:100},
+    {x:680,y:675,w:140,h:85}
+  ];
+
+  // Внешняя стена кабинета: внутри разрешён только сам кабинет
+  // и отмеченные дверные проёмы.
+  const officeWall={x:565,y:405,w:270,h:215};
+  const office={x:590,y:425,w:225,h:185};
+  if(pointInRect(x,y,officeWall) && !pointInRect(x,y,office)){
+    for(const r of DOOR_LINKS) if(pointInRect(x,y,r)) return true;
+    return false;
+  }
+
+  for(const r of zones) if(pointInRect(x,y,r)) return true;
+  for(const r of DOOR_LINKS) if(pointInRect(x,y,r)) return true;
+  return false;
+}
+
+function circleWalkable(x,y,rad){
+  // Проверяем центр и 16 точек по окружности. Это не позволяет игроку
+  // пролезать углом через стену или дверь.
+  const rr=rad+4;
+  const pts=[[0,0]];
+  for(let i=0;i<32;i++){
+    const a=i*Math.PI/16;
+    pts.push([Math.cos(a)*rr,Math.sin(a)*rr]);
+  }
+  return pts.every(p=>pointWalkable(x+p[0],y+p[1]));
+}
+function movePlayer(nx,ny){
+ // Двигаемся маленькими шагами: это не даёт проскочить через стену и не
+ // "прилипает" к углу двери при движении по диагонали.
+ const dx=nx-player.x,dy=ny-player.y;
+ const steps=Math.max(1,Math.ceil(Math.hypot(dx,dy)/5));
+ for(let i=0;i<steps;i++){
+   const tx=player.x+dx/steps,ty=player.y+dy/steps;
+   if(circleWalkable(tx,player.y,player.r)) player.x=tx;
+   if(circleWalkable(player.x,ty,player.r)) player.y=ty;
+ }
+}
+function roomAt(x,y){for(const r of ROOM_INFO)if(pointInRect(x,y,r))return r;return null}
+
+function showMsg(t){const e=document.getElementById("msg");e.textContent=t;e.style.display="block";messageTimer=3}
+function spawnZombie(){
+  // Вход в бункер находится у нижнего шлюза. Зомби появляются снаружи
+  // и заходят через гермодверь, после чего ищут игрока.
+  const entrance=[
+    {x:735,y:758},{x:750,y:758},{x:765,y:758},
+    {x:720,y:770},{x:780,y:770}
+  ];
+  const s=entrance[Math.floor(Math.random()*entrance.length)];
+  zombies.push({x:s.x+(Math.random()*20-10),y:s.y+(Math.random()*12-6),r:14,speed:35+Math.random()*18+Math.min(20,wave*0.8),hp:2+Math.floor(wave/3),hit:0});
+}
+function startWave(){
+  wave++;
+  const count=Math.min(8+wave*3,80);
+  for(let i=0;i<count;i++) setTimeout(()=>{if(running&&!paused)spawnZombie()},i*220);
+  nextWaveAt=elapsed+60;
+  showMsg('ВОЛНА '+wave+' — ЗОМБИ ПРОРВАЛИСЬ ЧЕРЕЗ ВХОД!');
+  saveGame();
+}
+function dropGears(z){const amount=1+Math.floor(Math.random()*3);loot.push({x:z.x,y:z.y,type:"gears",amount,label:"Шестерёнки ×"+amount});return amount}
+function shoot(){
+ if(!running||shotTimer>0)return;
+ if(!player.weapon||player.weapon==="Нож"){
+   let target=null,best=58;
+   for(const z of zombies){const dx=z.x-player.x,dy=z.y-player.y,d=Math.hypot(dx,dy);const angle=Math.atan2(dy,dx);let diff=Math.atan2(Math.sin(angle-playerFacing),Math.cos(angle-playerFacing));if(d<best&&Math.abs(diff)<1.15){best=d;target=z}}
+   if(target){target.hp-=2;if(target.hp<=0){zombies.splice(zombies.indexOf(target),1);player.kills++;const g=dropGears(target);showMsg('Зомби повержен: собери '+g+' ⚙ шестерёнки')}else showMsg('Удар ножом!')}
+   else showMsg('Подойди к зомби ближе и повернись к нему');
+   shotTimer=.48;return;
+ }
+ if(player.ammo<=0){showMsg('Нет патронов! Найди боеприпасы или купи их в командном центре.');return;}
+ let tx,ty;if(mouse.active){tx=worldX(mouse.x);ty=worldY(mouse.y)}else{tx=player.x+Math.cos(playerFacing)*100;ty=player.y+Math.sin(playerFacing)*100}
+ const dx=tx-player.x,dy=ty-player.y,len=Math.hypot(dx,dy)||1;
+ const pellets=player.weapon==="Дробовик"?5:1;
+ for(let i=0;i<pellets;i++){const spread=player.weapon==="Дробовик"?(Math.random()-.5)*.32:0;const a=Math.atan2(dy,dx)+spread;bullets.push({x:player.x,y:player.y,vx:Math.cos(a)*520,vy:Math.sin(a)*520,life:1.1})}
+ player.ammo--;shotTimer=player.weapon==="Пистолет"?.32:player.weapon==="Дробовик"?.7:.22;
+}
+function updateRoomEffects(dt){
+ const r=roomAt(player.x,player.y);
+ if(r!==currentRoom){currentRoom=r;if(r)showMsg(`${r.name}: ${r.desc}`)}
+ if(!r)return;
+ if(r.name==="СПАЛЬНЯ")player.stamina=clamp(player.stamina+dt*10,0,100);
+ if(r.name==="САНУЗЕЛ")player.water=clamp(player.water+dt*6,0,100);
+ if(r.name==="МЕДПУНКТ")player.hp=clamp(player.hp+dt*(4+(player.baseLevel||0)*2),0,100);
+ if(r.name==="СТОЛОВАЯ")player.food=clamp(player.food+dt*5,0,100);
+ if(r.name==="ГИДРОПОНИКА"){player.food=clamp(player.food+dt*2.5,0,100);player.water=clamp(player.water+dt*2.5,0,100)}
+ if(r.name==="МАСТЕРСКАЯ"&&Math.random()<dt*.8)player.ammo=Math.min(30,player.ammo+1);
+ if(r.name==="СКЛАД"&&Math.random()<dt*.35)player.ammo=Math.min(30,player.ammo+1);
+}
+let hermeticDoorOpen=false;
+function nearHermeticDoor(){return nearExit();}
+function toggleHermeticDoor(){
+  if(outside){
+    if(nearOutsideGate()) enterBunker();
+    else showMsg("Подойди к воротам бункера.");
+    return;
+  }
+  if(nearHermeticDoor()) enterOutside();
+  else showMsg("Подойди к гермодвери.");
+}
+function update(dt){
+ if(paused) return;
+ elapsed+=dt;
+ shotTimer=Math.max(0,shotTimer-dt);
+ taskCooldown=Math.max(0,taskCooldown-dt);
+ const speed=(outside?180:150)*(dt);
+ let mx=0,my=0;
+ if(keys.w||keys.W||keys.ArrowUp)my-=1;
+ if(keys.s||keys.S||keys.ArrowDown)my+=1;
+ if(keys.a||keys.A||keys.ArrowLeft)mx-=1;
+ if(keys.d||keys.D||keys.ArrowRight)mx+=1;
+ if(touch.active){const ax=touch.x-touch.startX,ay=touch.y-touch.startY,al=Math.hypot(ax,ay);if(al>8){mx+=ax/al*Math.min(1,al/40);my+=ay/al*Math.min(1,al/40)}}
+ const ml=Math.hypot(mx,my)||1;
+ playerMoving=!!(mx||my);
+ if(playerMoving){
+   mx/=ml;my/=ml;updatePlayerFacing(mx,my);
+   walkPhase += dt*11;
+   const nx=player.x+mx*speed,ny=player.y+my*speed;
+   if(outside)moveOutside(nx,ny);else movePlayer(nx,ny);
+ }else{
+   updatePlayerFacing(0,0);
+   // Плавно возвращаемся в спокойную позу.
+   walkPhase *= Math.max(0,1-dt*8);
+ }
+ if(!outside){
+   player.food=clamp(player.food-dt*0.45,0,100);
+   player.water=clamp(player.water-dt*0.7,0,100);
+   if(player.food<=0||player.water<=0)player.hp=clamp(player.hp-dt*3,0,100);
+   updateRoomEffects(dt);
+   if(elapsed>=nextWaveAt&&zombies.length===0)startWave();
+ } else {
+   doTask(dt);
+   if(elapsed>=nextWaveAt){enterBunker();showMsg("Началась новая волна — возвращение в бункер!");}
+ }
+ updateOutdoorUI();updateCommandButton();
+ if(aimTouch.active){const ax=aimTouch.x-aimTouch.startX,ay=aimTouch.y-aimTouch.startY,al=Math.hypot(ax,ay);if(al>10){mouse.x=player.x*devicePixelRatio+ox+ax*8;mouse.y=player.y*devicePixelRatio+oy+ay*8;mouse.active=true}}
+ if(mouse.down||(aimTouch.active&&Math.hypot(aimTouch.x-aimTouch.startX,aimTouch.y-aimTouch.startY)>10))shoot();
+ if(!outside) for(const z of zombies){
+   const dx=player.x-z.x,dy=player.y-z.y,l=Math.hypot(dx,dy)||1;
+   const nx=z.x+dx/l*z.speed*dt,ny=z.y+dy/l*z.speed*dt;
+   if(pointWalkable(nx,ny)){z.x=nx;z.y=ny}else{
+     if(pointWalkable(z.x+dx/l*z.speed*dt,z.y))z.x+=dx/l*z.speed*dt;
+     if(pointWalkable(z.x,z.y+dy/l*z.speed*dt))z.y+=dy/l*z.speed*dt;
+   }
+   z.hit-=dt;if(l<z.r+player.r){player.hp-=10*dt*(1-Math.min(.6,(player.armor||0)*.15));if(z.hit<=0)z.hit=.6}
+ }
+ for(let i=bullets.length-1;i>=0;i--){
+   const b=bullets[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;let remove=b.life<=0||!pointWalkable(b.x,b.y);
+   for(let j=zombies.length-1;j>=0&&!remove;j--){const z=zombies[j];if(Math.hypot(b.x-z.x,b.y-z.y)<z.r+5){z.hp--;remove=true;if(z.hp<=0){zombies.splice(j,1);player.kills++;const g=dropGears(z);showMsg("Зомби повержен: собери "+g+" ⚙ шестерёнки")}}}
+   if(remove)bullets.splice(i,1);
+ }
+ for(let i=loot.length-1;i>=0;i--){const a=loot[i];if(Math.hypot(player.x-a.x,player.y-a.y)<30){
+   if(a.type==="food")inventory.food++;
+   if(a.type==="water")inventory.water++;
+   if(a.type==="med")inventory.med++;
+   if(a.type==="ammo")player.ammo+=8;
+   if(a.type==="gears")player.gears=(player.gears||0)+(a.amount||1);
+   showMsg(a.type==="gears"?"Подобрано: +"+(a.amount||1)+" ⚙ шестерёнки":"Подобрано: "+a.label);loot.splice(i,1);drawInventory();saveGame();
+ }}
+ if(messageTimer>0){messageTimer-=dt;if(messageTimer<=0)document.getElementById("msg").style.display="none"}
+ if(player.hp<=0)endGame(false);updateHud();saveGameIfNeeded();
+}
+function drawInventory(){
+ const items=[['water','invWater',''],['food','invFood',''],['med','invMed','']];
+ for(const [type,id,emoji] of items){
+  const cv=document.getElementById(id); if(!cv)continue;
+  const c=cv.getContext('2d'); if(!c)continue;
+  c.clearRect(0,0,64,64);
+  // Always render a visible fallback icon first, so inventory never appears blank.
+  c.textAlign='center'; c.textBaseline='middle';
+  // If the sprite sheet is ready, draw its item artwork over the fallback.
+  try{
+   const r=LOOT_RECTS[type];
+   if(lootSheet && lootSheet.complete && lootSheet.naturalWidth>0 && r){
+    const max=56,sc=Math.min(max/r[2],max/r[3]),w=r[2]*sc,h=r[3]*sc;
+    c.clearRect(0,0,64,64);
+    c.drawImage(lootSheet,r[0],r[1],r[2],r[3],(64-w)/2,(64-h)/2,w,h);
+    // A tiny emoji overlay guarantees an identifiable icon if the sprite crop is transparent.
+    c.font='17px "Apple Color Emoji","Noto Color Emoji",sans-serif';
+    c.fillText(emoji,51,52);
+   }
+  }catch(e){ /* fallback emoji remains visible */ }
+  const count=document.getElementById(id+'Count'); if(count)count.textContent=inventory[type]||0;
+ }
+}
+// Draw the inventory immediately on page load, not only after picking up loot.
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',drawInventory,{once:true});
+else drawInventory();
+function useInventoryItem(type){
+ if(!inventory[type]){showMsg('В инвентаре нет этого предмета');return;}
+ if(type==='water'){
+  if(player.water>=100){showMsg('Жажда уже восстановлена');return;}
+  player.water=clamp(player.water+45,0,100);
+ }else if(type==='food'){
+  if(player.food>=100){showMsg('Голод уже восстановлен');return;}
+  player.food=clamp(player.food+38,0,100);
+ }else if(type==='med'){
+  if(player.hp>=100){showMsg('Здоровье уже полное');return;}
+  player.hp=clamp(player.hp+30,0,100);
+ }
+ inventory[type]--;
+ updateHud();drawInventory();saveGame();
+ showMsg(type==='water'?'Выпито: вода':type==='food'?'Съедено: еда':'Использована аптечка');
+}
+function updateHud(){
+ const mm=String(Math.floor(elapsed/60)).padStart(2,"0"),ss=String(Math.floor(elapsed%60)).padStart(2,"0");
+ document.getElementById("hp").style.width=player.hp+"%";document.getElementById("food").style.width=player.food+"%";document.getElementById("water").style.width=player.water+"%";
+ document.getElementById("stats").textContent=`Выживание: ${mm}:${ss} • ${outside?"УЛИЦА":"БУНКЕР"} • Волна через: ${Math.max(0,Math.floor(nextWaveAt-elapsed))}с • Зомби: ${zombies.length} • Уничтожено: ${player.kills} • Оружие: ${player.weapon||"Нож"} • Патроны: ${player.ammo} • ⚙ ${player.gears||0}`;
+}
+function draw(){
+ ctx.clearRect(0,0,W,H);ctx.fillStyle="#111612";ctx.fillRect(0,0,W,H);
+ if(outside){
+  if(streetBg.width){
+    const ss=Math.min(W/streetBg.width,H/streetBg.height);
+    const sox=(W-streetBg.width*ss)/2, soy=(H-streetBg.height*ss)/2;
+    ctx.drawImage(streetBg,sox,soy,streetBg.width*ss,streetBg.height*ss);
+    // Keep the game world coordinates aligned with the map.
+    scale=ss; ox=sox; oy=soy;
+  }
+  // Маркер ворот бункера сверху карты. Подойдя к нему, игрок получает кнопку "В БУНКЕР".
+  ctx.strokeStyle="#d7c36b";ctx.lineWidth=4;
+  ctx.strokeRect(screenX(OUTSIDE_GATE.x-38),screenY(OUTSIDE_GATE.y-20),76*scale,40*scale);
+  ctx.fillStyle="#e8d37a";ctx.font=`${14*scale}px sans-serif`;
+  ctx.fillText("ВОРОТА БУНКЕРА",screenX(OUTSIDE_GATE.x-78),screenY(OUTSIDE_GATE.y-28));
+  const t=currentTask();
+  ctx.strokeRect(screenX(t.x-35),screenY(t.y-35),70*scale,70*scale);
+  ctx.fillStyle="#e8d37a";ctx.font=`${16*scale}px sans-serif`;
+  ctx.fillText("ЗАДАНИЕ",screenX(t.x-40),screenY(t.y-45));
+}else{
+  ctx.fillStyle="#182019";ctx.fillRect(ox,oy,bg.width*scale,bg.height*scale);
+}
+ for(const a of loot){
+  const x=screenX(a.x),y=screenY(a.y);
+  const r=LOOT_RECTS[a.type];
+  if(false && lootSheet.complete && r){
+    const size=(a.type==="food"||a.type==="ammo"?58:54)*scale;
+    const ar=r[2]/r[3];
+    const dw=size, dh=size/ar;
+    ctx.save();
+    ctx.shadowColor="rgba(0,0,0,.75)";ctx.shadowBlur=8*scale;
+    ctx.drawImage(lootSheet,r[0],r[1],r[2],r[3],x-dw/2,y-dh/2,dw,dh);
+    ctx.restore();
+  }else{
+    ctx.beginPath();ctx.arc(x,y,11*scale+3,0,Math.PI*2);
+    ctx.fillStyle=a.type==="water"?"rgba(70,160,190,.75)":a.type==="med"?"rgba(190,70,65,.8)":a.type==="ammo"?"rgba(180,160,65,.8)":a.type==="gears"?"rgba(230,180,55,.95)":"rgba(80,150,80,.8)";
+    ctx.fill();ctx.strokeStyle="#d9dfd2";ctx.stroke();
+  }
+ }
+ for(const b of bullets){ctx.beginPath();ctx.arc(screenX(b.x),screenY(b.y),3,0,Math.PI*2);ctx.fillStyle="#f0e3a0";ctx.fill()}
+ for(const z of zombies){const x=screenX(z.x),y=screenY(z.y),r=z.r*scale;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle="#536b52";ctx.fill();ctx.strokeStyle="#172118";ctx.lineWidth=2;ctx.stroke();ctx.fillStyle="#d9e2d1";ctx.fillRect(x-r*.45,y-r*.15,4,4);ctx.fillRect(x+r*.15,y-r*.15,4,4)}
+ drawPlayerCharacter();
+
+}
+let lastSave=0;
+function saveGame(){
+ try{localStorage.setItem('lastBunkerSave',JSON.stringify({player,zombies,loot,bullets,elapsed,wave,nextWaveAt,outside,taskIndex,taskProgress,inventory}));lastSave=elapsed}catch(e){}
+}
+function saveGameIfNeeded(){if(elapsed-lastSave>=2)saveGame()}
+function hasSave(){try{return !!localStorage.getItem('lastBunkerSave')}catch(e){return false}}
+function loadGame(){
+ try{const d=JSON.parse(localStorage.getItem('lastBunkerSave'));if(!d||!d.player)return false;
+  player=d.player;player.gears=player.gears||0;player.weapon=player.weapon||"Нож";player.armor=player.armor||0;player.baseLevel=player.baseLevel||0;zombies=d.zombies||[];loot=d.loot||[];bullets=d.bullets||[];elapsed=d.elapsed||0;wave=d.wave||1;nextWaveAt=d.nextWaveAt||elapsed+60;outside=!!d.outside;taskIndex=d.taskIndex||0;taskProgress=d.taskProgress||0;inventory=Object.assign({water:0,food:0,med:0},d.inventory||{});particles=[];shotTimer=0;paused=false;drawInventory();return true;
+ }catch(e){return false}
+}
+function clearSave(){try{localStorage.removeItem('lastBunkerSave')}catch(e){}}
+function setPaused(v){paused=v;document.getElementById('pauseOverlay').classList.toggle('hidden',!paused);const pb=document.getElementById('pauseBtn');if(pb)pb.textContent=paused?'ПРОДОЛЖИТЬ':'ПАУЗА';if(paused)saveGame();last=performance.now()}
+function loop(t){if(!running){draw();return}const dt=Math.min(.033,(t-last)/1000||0);last=t;update(dt);draw();requestAnimationFrame(loop)}
+function start(load=false){if(load&&loadGame()){}else{clearSave();reset()}running=true;paused=false;document.getElementById("gameMenuToggle").style.display="flex";document.getElementById("gameMenuPanel").classList.add("hidden");document.getElementById("commandShop").classList.add("hidden");document.getElementById("start").classList.add("hidden");document.getElementById("over").classList.add("hidden");document.getElementById('pauseOverlay').classList.add('hidden');updateOutdoorUI();last=performance.now();requestAnimationFrame(loop)}
+function endGame(win){running=false;saveGame();document.getElementById("over").classList.remove("hidden");document.getElementById("overTitle").textContent=win?"ТЫ ВЫЖИЛ":"БУНКЕР ПАЛ";document.getElementById("overText").textContent=`Выжито ${Math.floor(elapsed/60)} мин. ${Math.floor(elapsed%60)} сек. • Волн: ${wave} • Уничтожено: ${player.kills}.` }
+function atCommandCenter(){return !outside&&Math.hypot(player.x-760,player.y-190)<115}
+function updateCommandButton(){document.getElementById('commandBtn').style.display=(running&&!paused&&atCommandCenter())?'block':'none'}
+const shopOffers=[
+ {id:'pistol',name:'Пистолет',desc:'Быстрый и экономный. 12 патронов в комплекте.',cost:12,action(){player.weapon='Пистолет';player.ammo=Math.max(player.ammo,12)}},
+ {id:'rifle',name:'Автомат',desc:'Надёжное оружие для следующих волн. +30 патронов.',cost:30,action(){player.weapon='Автомат';player.ammo=Math.max(player.ammo,30)}},
+ {id:'shotgun',name:'Дробовик',desc:'Выстреливает несколько дробин. +12 патронов.',cost:38,action(){player.weapon='Дробовик';player.ammo=Math.max(player.ammo,12)}},
+ {id:'ammo',name:'Боеприпасы',desc:'+20 патронов к текущему огнестрельному оружию.',cost:8,action(){if(player.weapon==='Нож'){showMsg('Сначала купи огнестрельное оружие');return false}player.ammo+=20}},
+ {id:'armor',name:'Бронежилет',desc:'Снижает урон от укусов. Можно улучшить до уровня 3.',cost:22,action(){if((player.armor||0)>=3){showMsg('Бронежилет уже максимального уровня');return false}player.armor=(player.armor||0)+1}},
+ {id:'base',name:'Прокачка базы',desc:'Уровень '+((player&&player.baseLevel)||0)+' — улучшает защиту базы и восстановление здоровья в медпункте.',cost:25,action(){if((player.baseLevel||0)>=3){showMsg('База уже максимального уровня');return false}player.baseLevel=(player.baseLevel||0)+1;player.hp=Math.min(100,player.hp+15)}}
+];
+function renderShop(){const box=document.getElementById('shopItems');document.getElementById('shopBalance').textContent='Шестерёнки: '+(player.gears||0)+' ⚙';box.innerHTML='';for(const item of shopOffers){const row=document.createElement('div');row.className='shopItem';const info=document.createElement('div');info.innerHTML='<strong>'+item.name+'</strong><small>'+item.desc+'</small><small>Цена: '+item.cost+' ⚙</small>';const btn=document.createElement('button');btn.textContent='КУПИТЬ';btn.onclick=()=>{if((player.gears||0)<item.cost){showMsg('Не хватает шестерёнок');return}const result=item.action();if(result===false)return;player.gears-=item.cost;saveGame();renderShop();updateHud();showMsg('Покупка: '+item.name)};row.append(info,btn);box.appendChild(row)}}
+document.getElementById('commandBtn').addEventListener('click',()=>{if(!atCommandCenter()){showMsg('Подойди к командному центру');return}renderShop();document.getElementById('commandShop').classList.remove('hidden')});
+document.getElementById('shopClose').addEventListener('click',()=>document.getElementById('commandShop').classList.add('hidden'));
+addEventListener("keydown",e=>{keys[e.key]=true;if(e.code==="Space")shoot()});addEventListener("keyup",e=>keys[e.key]=false);
+canvas.addEventListener("mousemove",e=>{mouse.x=e.clientX*devicePixelRatio;mouse.y=e.clientY*devicePixelRatio;mouse.active=true});
+canvas.addEventListener("mousedown",()=>{mouse.down=true;shoot()});addEventListener("mouseup",()=>mouse.down=false);
+function bindStick(id,state){
+ const el=document.getElementById(id),knob=el.querySelector(".knob");
+ let pid=null;
+ function set(e){
+   const r=el.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+   let x=e.clientX-cx,y=e.clientY-cy,d=Math.hypot(x,y),max=40;
+   if(d>max){x=x/d*max;y=y/d*max}
+   state.x=(cx+x)*devicePixelRatio;state.y=(cy+y)*devicePixelRatio;
+   knob.style.transform=`translate(${x}px,${y}px)`;
+ }
+ el.addEventListener("pointerdown",e=>{
+   e.preventDefault();
+   pid=e.pointerId;
+   const r=el.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+   // ВАЖНО: центр фиксируем ДО active=true. Раньше стартовые координаты
+   // оставались (0,0), из-за чего виртуальный джойстик давал неправильное направление.
+   state.startX=cx*devicePixelRatio;state.startY=cy*devicePixelRatio;
+   state.x=state.startX;state.y=state.startY;state.active=true;
+   try{el.setPointerCapture(pid)}catch(_){ }
+   set(e);
+ },{passive:false});
+ el.addEventListener("pointermove",e=>{if(e.pointerId===pid){e.preventDefault();set(e)}},{passive:false});
+ function end(e){
+   if(e.pointerId!==pid)return;
+   state.active=false;pid=null;state.x=state.startX;state.y=state.startY;knob.style.transform="translate(0,0)";
+ }
+ el.addEventListener("pointerup",end);el.addEventListener("pointercancel",end);el.addEventListener("lostpointercapture",e=>{if(pid!==null)end(e)});
+}
+bindStick("moveStick",touch);bindStick("aimStick",aimTouch);
+const fireBtn=document.getElementById("fireBtn");fireBtn.addEventListener("pointerdown",e=>{e.preventDefault();mouse.down=true;shoot()});fireBtn.addEventListener("pointerup",e=>{e.preventDefault();mouse.down=false});fireBtn.addEventListener("pointercancel",()=>mouse.down=false);
+document.getElementById("startBtn").onclick=()=>start(false);
+document.getElementById("restartBtn").onclick=()=>start(false);
+const initialGameMenuToggle=document.getElementById("gameMenuToggle");if(initialGameMenuToggle)initialGameMenuToggle.style.display="none";
+document.getElementById("resumeBtn").onclick=()=>setPaused(false);
+document.getElementById("pauseBtn").onclick=()=>setPaused(!paused);
+document.getElementById("outsideBtn").onclick=enterOutside;
+document.getElementById("doorBtn").addEventListener("click",toggleHermeticDoor);
+document.getElementById("continueBtn").onclick=()=>start(true);
+if(hasSave())document.getElementById("continueBtn").style.display="block";
+document.querySelectorAll('.invSlot').forEach(el=>el.addEventListener('pointerdown',e=>{e.preventDefault();useInventoryItem(el.dataset.item)}));
+if(typeof lootSheet!=='undefined'){if(lootSheet.complete && lootSheet.naturalWidth>0){drawInventory();draw()}else lootSheet.onload=()=>{drawInventory();draw()};}
+drawInventory();
+bg.onload=()=>{fit();draw()};
+streetBg.onload=()=>{if(outside)draw()};
+</script>
+<script>
+// Просим браузер перейти в горизонтальную ориентацию, если это поддерживается.
+(function(){
+  async function requestLandscape(){
+    try {
+      if (screen.orientation && screen.orientation.lock) {
+        await screen.orientation.lock('landscape');
+      }
+    } catch (e) { /* На некоторых мобильных браузерах блокировка доступна только в полноэкранном режиме. */ }
+  }
+  document.addEventListener('pointerdown', requestLandscape, {once:true, passive:true});
+  document.addEventListener('click', requestLandscape, {once:true});
+  window.addEventListener('orientationchange', function(){ window.dispatchEvent(new Event('resize')); });
+})();
+</script>
+
+
+<script>
+(()=>{
+ const toggle=document.getElementById('gameMenuToggle');
+ const panel=document.getElementById('gameMenuPanel');
+ const pauseBtn=document.getElementById('menuPauseBtn');
+ const backBtn=document.getElementById('menuBackBtn');
+ const exitBtn=document.getElementById('menuExitBtn');
+ if(!toggle||!panel)return;
+ const closeMenu=()=>{panel.classList.add('hidden');toggle.setAttribute('aria-expanded','false')};
+ toggle.addEventListener('click',()=>{const open=panel.classList.contains('hidden');panel.classList.toggle('hidden',!open);toggle.setAttribute('aria-expanded',String(open))});
+ pauseBtn.addEventListener('click',()=>{closeMenu();if(typeof running!=='undefined'&&running&&typeof setPaused==='function')setPaused(!(typeof paused!=='undefined'&&paused));else{const start=document.getElementById('start');if(start)start.classList.remove('hidden')}});
+ backBtn.addEventListener('click',()=>{closeMenu();try{if(typeof saveGame==='function')saveGame();if(typeof running!=='undefined')running=false;if(typeof paused!=='undefined')paused=false;['pauseOverlay','commandShop','over'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('hidden')});const start=document.getElementById('start');if(start)start.classList.remove('hidden');const mt=document.getElementById('gameMenuToggle');if(mt)mt.style.display='none';const c=document.getElementById('continueBtn');if(c&&typeof hasSave==='function')c.style.display=hasSave()?'block':'none'}catch(e){console.warn(e)}});
+ exitBtn.addEventListener('click',()=>{closeMenu();try{if(typeof saveGame==='function')saveGame();if(typeof running!=='undefined')running=false;if(typeof paused!=='undefined')paused=false;['pauseOverlay','commandShop','over'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('hidden')});const start=document.getElementById('start');if(start)start.classList.remove('hidden');const mt=document.getElementById('gameMenuToggle');if(mt)mt.style.display='none';const sub=start&&start.querySelector('.sub');if(sub)sub.textContent='Игра сохранена. Чтобы выйти, закрой вкладку браузера.';const c=document.getElementById('continueBtn');if(c)c.style.display='block'}catch(e){console.warn(e)}});
+ document.addEventListener('pointerdown',e=>{if(!panel.contains(e.target)&&e.target!==toggle)closeMenu()});
+})();
+</script>
+</body>
+</html>
